@@ -2,11 +2,12 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymavlink import mavutil
-from threading import Thread
+from threading import Thread, Lock
 import time
+from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 class PixhawkConnection:
     def __init__(self):
@@ -24,7 +25,23 @@ class PixhawkConnection:
         self.battery_current = 0
         self.battery_consumed = 0
         self.logs = []
+        self.max_logs = 1000  # Maximum number of logs to keep
+        self.logs_lock = Lock()  # Thread-safe logging
         self.armed = False
+
+    def add_log(self, message, log_type='info', details=None):
+        with self.logs_lock:
+            log_entry = {
+                'timestamp': int(time.time() * 1000),  # milliseconds timestamp
+                'message': message,
+                'type': log_type,
+                'details': details
+            }
+            self.logs.insert(0, log_entry)  # Add to beginning of list
+
+            # Trim logs if they exceed maximum
+            if len(self.logs) > self.max_logs:
+                self.logs = self.logs[:self.max_logs]
 
     def connect(self):
         try:
@@ -33,21 +50,28 @@ class PixhawkConnection:
             print("Waiting for heartbeat...")
             self.connection.wait_heartbeat()
             self.connected = True
+            self.add_log("Successfully connected to Pixhawk", "info")
             print(f"Connected to system: {self.connection.target_system} component: {self.connection.target_component}")
             return True
         except Exception as e:
-            print(f"Connection failed: {e}")
+            error_msg = f"Connection failed: {str(e)}"
+            self.add_log(error_msg, "error")
+            print(error_msg)
             return False
 
     def request_data_streams(self):
-        print("Requesting data streams...")
-        self.connection.mav.request_data_stream_send(
-            self.connection.target_system,
-            self.connection.target_component,
-            mavutil.mavlink.MAV_DATA_STREAM_ALL,
-            4,  # 4 Hz update rate
-            1
-        )
+        try:
+            print("Requesting data streams...")
+            self.connection.mav.request_data_stream_send(
+                self.connection.target_system,
+                self.connection.target_component,
+                mavutil.mavlink.MAV_DATA_STREAM_ALL,
+                4,  # 4 Hz update rate
+                1
+            )
+            self.add_log("Data streams requested", "info")
+        except Exception as e:
+            self.add_log(f"Failed to request data streams: {str(e)}", "error")
 
     def update_telemetry(self):
         while True:
@@ -59,6 +83,7 @@ class PixhawkConnection:
                 if msg is None:
                     continue
                 msg_type = msg.get_type()
+
                 if msg_type == 'GLOBAL_POSITION_INT':
                     self.lat = msg.lat / 1e7
                     self.lon = msg.lon / 1e7
@@ -68,19 +93,35 @@ class PixhawkConnection:
                 elif msg_type == 'VFR_HUD':
                     self.groundspeed = msg.groundspeed
                 elif msg_type == 'HEARTBEAT':
-                    self.mode = mavutil.mode_string_v10(msg)
-                    self.armed = msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+                    new_mode = mavutil.mode_string_v10(msg)
+                    if new_mode != self.mode:
+                        self.add_log(f"Flight mode changed to {new_mode}", "info")
+                        self.mode = new_mode
+                    new_armed_state = msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+                    if new_armed_state != self.armed:
+                        self.armed = new_armed_state
+                        self.add_log(f"Vehicle {'armed' if self.armed else 'disarmed'}", "info")
                 elif msg_type == 'SYS_STATUS':
                     self.battery_percentage = msg.battery_remaining
                     self.battery_voltage = msg.voltage_battery / 1000
                     self.battery_current = msg.current_battery / 100
                     self.battery_consumed = msg.battery_remaining
+
+                    # Log low battery warnings
+                    if self.battery_percentage <= 20:
+                        self.add_log(f"Low battery warning: {self.battery_percentage}%", "warning")
+                    elif self.battery_percentage <= 10:
+                        self.add_log(f"Critical battery level: {self.battery_percentage}%", "error")
+
             except Exception as e:
-                print(f"Telemetry update error: {e}")
+                error_msg = f"Telemetry update error: {str(e)}"
+                self.add_log(error_msg, "error")
+                print(error_msg)
                 time.sleep(1)
 
     def set_mode(self, mode):
         if not self.connected:
+            self.add_log("Cannot set mode: Not connected", "warning")
             return False
         try:
             mode_id = self.connection.mode_mapping()[mode]
@@ -89,13 +130,17 @@ class PixhawkConnection:
                 mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
                 mode_id
             )
+            self.add_log(f"Flight mode change requested: {mode}", "info")
             return True
         except Exception as e:
-            print(f"Failed to set mode: {e}")
+            error_msg = f"Failed to set mode: {str(e)}"
+            self.add_log(error_msg, "error")
+            print(error_msg)
             return False
 
     def arm(self, arm=True):
         if not self.connected:
+            self.add_log("Cannot arm/disarm: Not connected", "warning")
             return False
         try:
             self.connection.mav.command_long_send(
@@ -105,10 +150,18 @@ class PixhawkConnection:
                 0,
                 1 if arm else 0, 0, 0, 0, 0, 0, 0
             )
+            self.add_log(f"{'Arming' if arm else 'Disarming'} command sent", "info")
             return True
         except Exception as e:
-            print(f"Failed to arm/disarm: {e}")
+            error_msg = f"Failed to {'arm' if arm else 'disarm'}: {str(e)}"
+            self.add_log(error_msg, "error")
+            print(error_msg)
             return False
+
+    def clear_logs(self):
+        with self.logs_lock:
+            self.logs = []
+            self.add_log("Logs cleared", "info")
 
 pixhawk = PixhawkConnection()
 
@@ -138,6 +191,16 @@ def get_telemetry():
         'armed': pixhawk.armed
     })
 
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    with pixhawk.logs_lock:
+        return jsonify({'logs': pixhawk.logs})
+
+@app.route('/logs/clear', methods=['POST'])
+def clear_logs():
+    pixhawk.clear_logs()
+    return jsonify({'success': True})
+
 @app.route('/set_mode', methods=['POST'])
 def set_mode():
     mode = request.json.get('mode')
@@ -152,27 +215,34 @@ def arm():
     success = pixhawk.arm(arm_state)
     return jsonify({'success': success})
 
-# Add these endpoints to your existing Flask server
-
 @app.route('/mission/start', methods=['POST'])
 def start_mission():
     if not pixhawk.connected:
         return jsonify({'success': False, 'error': 'Not connected'})
-        
+
     try:
         mission_data = request.json
         waypoints = mission_data['waypoints']
         settings = mission_data['settings']
-        
+
+        # Log mission start
+        pixhawk.add_log(f"Starting new mission with {len(waypoints)} waypoints", "info", {
+            'waypoints': len(waypoints),
+            'altitude': settings['altitude'],
+            'speed': settings['speed']
+        })
+
         # Clear any existing mission
         pixhawk.connection.mav.mission_clear_all_send(
             pixhawk.connection.target_system,
             pixhawk.connection.target_component
         )
-        
+
         # Wait for acknowledgment
-        pixhawk.connection.recv_match(type='MISSION_ACK', blocking=True, timeout=5)
-        
+        ack = pixhawk.connection.recv_match(type='MISSION_ACK', blocking=True, timeout=5)
+        if not ack:
+            raise Exception("Mission clear acknowledgment not received")
+
         # Upload new mission
         for i, wp in enumerate(waypoints):
             # Convert to MAVLink waypoint
@@ -193,10 +263,14 @@ def start_mission():
                 wp['alt']                       # Altitude
             )
             pixhawk.connection.mav.send(mission_item)
-            
+
             # Wait for acknowledgment
-            pixhawk.connection.recv_match(type='MISSION_ACK', blocking=True, timeout=5)
-        
+            ack = pixhawk.connection.recv_match(type='MISSION_ACK', blocking=True, timeout=5)
+            if not ack:
+                raise Exception(f"Mission item {i} acknowledgment not received")
+
+            pixhawk.add_log(f"Uploaded waypoint {i+1}/{len(waypoints)}", "info")
+
         # If return to home is enabled, add RTL waypoint
         if settings['returnToHome']:
             rtl_item = pixhawk.connection.mav.mission_item_encode(
@@ -208,30 +282,42 @@ def start_mission():
                 0, 1, 0, 0, 0, 0, 0, 0, 0
             )
             pixhawk.connection.mav.send(rtl_item)
-            pixhawk.connection.recv_match(type='MISSION_ACK', blocking=True, timeout=5)
-        
+            ack = pixhawk.connection.recv_match(type='MISSION_ACK', blocking=True, timeout=5)
+            if not ack:
+                raise Exception("RTL waypoint acknowledgment not received")
+
+            pixhawk.add_log("Added Return to Launch waypoint", "info")
+
         # Set mode to AUTO to start mission
-        pixhawk.set_mode('AUTO')
-        
+        if not pixhawk.set_mode('AUTO'):
+            raise Exception("Failed to set AUTO mode")
+
+        pixhawk.add_log("Mission started successfully", "info")
         return jsonify({'success': True})
-        
+
     except Exception as e:
-        print(f"Mission start error: {e}")
+        error_msg = f"Mission start error: {str(e)}"
+        pixhawk.add_log(error_msg, "error")
+        print(error_msg)
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/mission/stop', methods=['POST'])
 def stop_mission():
     if not pixhawk.connected:
         return jsonify({'success': False, 'error': 'Not connected'})
-        
+
     try:
         # Switch to LOITER mode to stop the mission
-        pixhawk.set_mode('LOITER')
-        
+        if not pixhawk.set_mode('LOITER'):
+            raise Exception("Failed to set LOITER mode")
+
+        pixhawk.add_log("Mission stopped - Switched to LOITER mode", "info")
         return jsonify({'success': True})
-        
+
     except Exception as e:
-        print(f"Mission stop error: {e}")
+        error_msg = f"Mission stop error: {str(e)}"
+        pixhawk.add_log(error_msg, "error")
+        print(error_msg)
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
