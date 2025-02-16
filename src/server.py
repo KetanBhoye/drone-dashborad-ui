@@ -1,3 +1,6 @@
+# sudo systemctl stop drone-server.service
+# sudo systemctl start drone-server.service
+
 #!/usr/bin/python3
 from flask import Flask, jsonify, request
 from flask_cors import CORS

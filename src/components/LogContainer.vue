@@ -50,7 +50,7 @@ export default {
     }
   },
   
-  setup(props, { emit }) {  // Added emit to setup params
+  setup(props, { emit }) {
     const logContent = ref(null)
     const filterType = ref('all')
     const autoScroll = ref(true)
@@ -78,12 +78,10 @@ export default {
       emit('clear-logs')
     }
 
-    // Watch for new logs and scroll to bottom
     watch(() => props.logs.length, () => {
       scrollToBottom()
     })
 
-    // Watch for log content scrolling to detect manual scroll
     const handleScroll = () => {
       if (!logContent.value) return
       
@@ -105,6 +103,40 @@ export default {
 </script>
 
 <style scoped>
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  height: 100%; /* Ensure full height of parent container */
+}
+
+.panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.log-container {
+  grid-column: span 2; /* Take up 2 columns */
+  max-height: 500px; /* Consistent with other containers */
+  overflow: hidden;
+}
+
+.log-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .log-container {
+    grid-column: span 1; /* Take up 1 column on smaller screens */
+  }
+}
 .panel {
   background: white;
   border-radius: 8px;
