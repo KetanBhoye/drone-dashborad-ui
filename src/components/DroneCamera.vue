@@ -36,7 +36,7 @@
   data() {
     return {
       streamActive: false,
-      streamUrl: 'http://192.168.97.33:8000/stream',  // Updated port to 8000
+      streamUrl: ' http://192.168.225.139:8000/stream',  // Updated port to 8000
       frameCount: 0,
       lastTime: Date.now()
     }

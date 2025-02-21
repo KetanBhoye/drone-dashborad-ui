@@ -94,7 +94,7 @@ export default {
     DroneCamera
   },
   setup() {
-    const API_URL = 'http://192.168.117.33:5000/'
+    const API_URL = 'http://10.242.38.121:5000/'
     const connected = ref(false)
     const connecting = ref(false)
     const connectionAttempts = ref(0)
