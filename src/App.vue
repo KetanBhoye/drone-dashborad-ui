@@ -1,4 +1,3 @@
-// App.vue
 <template>
   <div id="app">
     <div class="main-container">
@@ -27,7 +26,7 @@
       />
 
       <div class="content-grid">
-        <!-- Left Column: Map and Camera -->
+        <!-- Left Column: Map and WebRTC Camera Feed -->
         <div class="main-content">
           <!-- Map with Mission Control -->
           <DroneMap 
@@ -40,10 +39,8 @@
             @stop-mission="handleStopMission"
           />
           
-          <!-- Camera Feed -->
-          <DroneCamera 
-            :connected="connected"
-          />
+          <!-- WebRTC Camera Feed -->
+          <DroneWebRTC :connected="connected" />
         </div>
 
         <!-- Right Column: Dashboard and Logs -->
@@ -82,7 +79,7 @@ import DroneDashboard from './components/DroneDashboard.vue'
 import LogContainer from './components/LogContainer.vue'
 import StatusPanel from './components/StatusPanel.vue'
 import ErrorDialog from './components/ErrorDialog.vue'
-import DroneCamera from './components/DroneCamera.vue'
+import DroneWebRTC from './components/DroneWebRTC.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { io } from "socket.io-client"
 
@@ -94,7 +91,7 @@ export default {
     LogContainer,
     StatusPanel,
     ErrorDialog,
-    DroneCamera
+    DroneWebRTC
   },
   setup() {
     // Use the cloud relay server instead of direct connection
@@ -458,9 +455,7 @@ export default {
     };
 
     const showSuccessMessage = (message) => {
-      // You can implement this with your preferred UI component/library
       console.log('Success:', message);
-      // Could be replaced with a toast notification
     };
 
     const showGPSStatus = () => {
@@ -504,23 +499,16 @@ export default {
     });
 
     return {
-      // Connection state
       connected,
       connecting,
       currentMission,
       missionInProgress,
-
-      // Status and telemetry
       gpsStatus,
       vehicleStatus,
       telemetry,
       logs,
-
-      // Error handling
       showError,
       errorDetails,
-
-      // Methods
       connect,
       handleSetMode,
       handleToggleArm,
