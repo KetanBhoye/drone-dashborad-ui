@@ -14,36 +14,34 @@
     setup() {
       const videoElement = ref(null);
       let pc = null;
-      // Create the Socket.IO client connecting to your relay server (update the URL and port)
+      let captureInterval = null;
+      
+      // Connect to the video relay server
       const socket = io('http://128.199.26.169:3000/video');
   
-        // Identify as a control client once connected
-        socket.on('connect', () => {
-            console.log("Connected to video namespace");
-            socket.emit('identify', 'control'); // Important for signaling server
-        });
-
+      socket.on('connect', () => {
+        console.log("Connected to video namespace");
+        socket.emit('identify', 'control');
+      });
   
       // Handle incoming WebRTC signaling messages
       socket.on('webrtc-signal', async (data) => {
         console.log("Received WebRTC signal on frontend:", data);
-        // Check if this is an SDP offer from the drone
         if (data.type === 'offer') {
           if (!pc) {
-            // Create a new RTCPeerConnection
             pc = new RTCPeerConnection();
   
-              // Send ICE candidates to the drone as they are gathered
-              pc.onicecandidate = (event) => {
-                  if (event.candidate) {
-                      socket.emit('webrtc-signal', {
-                          target: 'drone',
-                          signal: { candidate: event.candidate }
-                      });
-                  }
-              };
+            // Send ICE candidates to the drone
+            pc.onicecandidate = (event) => {
+              if (event.candidate) {
+                socket.emit('webrtc-signal', {
+                  target: 'drone',
+                  signal: { candidate: event.candidate }
+                });
+              }
+            };
   
-            // When a track (stream) is received, attach it to the video element
+            // Attach incoming stream to the video element
             pc.ontrack = (event) => {
               console.log("Received remote track");
               if (videoElement.value) {
@@ -51,17 +49,14 @@
               }
             };
           }
-          // Set the remote description with the received SDP offer
           await pc.setRemoteDescription(new RTCSessionDescription({
             sdp: data.sdp,
             type: data.type
           }));
   
-          // Create an SDP answer
+          // Create and send SDP answer
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-  
-          // Send the SDP answer back to the drone via the relay server
           socket.emit('webrtc-signal', {
             target: 'drone',
             signal: {
@@ -72,7 +67,6 @@
           console.log("Sent SDP answer to drone");
   
         } else if (data.candidate) {
-          // If ICE candidate data is received, add it to the RTCPeerConnection
           if (pc) {
             try {
               await pc.addIceCandidate(data.candidate);
@@ -84,8 +78,35 @@
         }
       });
   
+      // Capture frame from video and upload to the backend service on port 3004
+      const captureFrame = () => {
+        const video = videoElement.value;
+        if (!video || video.readyState < 2) {
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert the canvas content to a PNG data URL
+        const dataURL = canvas.toDataURL('image/png');
+        
+        // Upload the captured image to the backend service
+        fetch('http://128.199.26.169:3004/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: dataURL })
+        })
+        .then(response => response.json())
+        .then(data => console.log('Image uploaded:', data))
+        .catch(err => console.error('Upload error:', err));
+      };
+  
       onMounted(() => {
-        // Nothing extra needed on mount, as the socket connection will auto-initiate
+        // Start capturing a frame every 3 seconds
+        captureInterval = setInterval(captureFrame, 3000);
       });
   
       onUnmounted(() => {
@@ -94,6 +115,9 @@
           pc = null;
         }
         socket.disconnect();
+        if (captureInterval) {
+          clearInterval(captureInterval);
+        }
       });
   
       return { videoElement };
