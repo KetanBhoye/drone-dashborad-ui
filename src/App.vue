@@ -19,57 +19,38 @@
       </header>
 
       <!-- Status Panel -->
-      <StatusPanel 
-        :gps-status="gpsStatus"
-        :vehicle-status="vehicleStatus"
-        class="status-panel"
-      />
+      <StatusPanel :gps-status="gpsStatus" :vehicle-status="vehicleStatus" class="status-panel" />
 
       <div class="content-grid">
         <!-- Left Column: Map and WebRTC Camera Feed -->
         <div class="main-content">
           <!-- Map with Mission Control -->
-          <DroneMap 
-            :latitude="telemetry.lat"
-            :longitude="telemetry.lon"
-            :connected="connected"
-            :mission-in-progress="missionInProgress"
-            :satellites="telemetry.satellites_visible"
-            @start-mission="handleStartMission"
-            @stop-mission="handleStopMission"
-          />
-          
-          <!-- WebRTC Camera Feed -->
-          <DroneWebRTC :connected="connected" />
+          <DroneMap :latitude="telemetry.lat" :longitude="telemetry.lon" :connected="connected"
+            :mission-in-progress="missionInProgress" :satellites="telemetry.satellites_visible"
+            @start-mission="handleStartMission" @stop-mission="handleStopMission" />
+
+        
+          <!-- <DroneWebRTC
+  :connected="connected"
+  :serverUrl="RELAY_SERVER_URL + '/video'"
+/> -->
         </div>
 
         <!-- Right Column: Dashboard and Logs -->
         <div class="side-panel">
           <!-- Dashboard -->
-          <DroneDashboard 
-            :connected="connected"
-            :telemetry="telemetry"
-            @set-mode="handleSetMode"
-            @toggle-arm="handleToggleArm"
-          />
-          
+          <DroneDashboard :connected="connected" :telemetry="telemetry" @set-mode="handleSetMode"
+            @toggle-arm="handleToggleArm" />
+
           <!-- Logs -->
-          <LogContainer 
-            :logs="logs"
-            @clear-logs="clearLogs"
-          />
+          <LogContainer :logs="logs" @clear-logs="clearLogs" />
         </div>
       </div>
     </div>
 
     <!-- Error Dialog -->
-    <ErrorDialog
-      v-model="showError"
-      :title="errorDetails.title"
-      :message="errorDetails.message"
-      :resolution="errorDetails.resolution"
-      :actions="errorDetails.actions"
-    />
+    <ErrorDialog v-model="showError" :title="errorDetails.title" :message="errorDetails.message"
+      :resolution="errorDetails.resolution" :actions="errorDetails.actions" />
   </div>
 </template>
 
@@ -79,7 +60,6 @@ import DroneDashboard from './components/DroneDashboard.vue'
 import LogContainer from './components/LogContainer.vue'
 import StatusPanel from './components/StatusPanel.vue'
 import ErrorDialog from './components/ErrorDialog.vue'
-import DroneWebRTC from './components/DroneWebRTC.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { io } from "socket.io-client"
 
@@ -91,11 +71,10 @@ export default {
     LogContainer,
     StatusPanel,
     ErrorDialog,
-    DroneWebRTC
   },
   setup() {
     // Use the cloud relay server instead of direct connection
-    const RELAY_SERVER_URL = 'http://128.199.26.169:3000'
+    const RELAY_SERVER_URL = 'http://143.110.254.9:3000'
     const connected = ref(false)
     const connecting = ref(false)
     const connectionAttempts = ref(0)
@@ -301,39 +280,65 @@ export default {
         console.error('Server error:', error);
         showErrorDialog('Server Error', error.message, error.resolution || 'Please try again');
       });
+      // Set up a heartbeat to keep the connection alive
+      const heartbeatInterval = setInterval(() => {
+        if (socket.value && socket.value.connected) {
+          socket.value.emit('ping', 'heartbeat');
+          console.log('Sent heartbeat to server');
+        }
+      }, 30000); // Send heartbeat every 30 seconds
+
+      // Clear interval on disconnect
+      socket.value.on('disconnect', () => {
+        console.log('Disconnected from relay server');
+        connected.value = false;
+        droneConnected.value = false;
+        showErrorDialog('Connection Lost', 'Lost connection to server', 'Attempting to reconnect...');
+
+        // Clean up heartbeat interval
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+      });
+
+      // Handle pong from server
+      socket.value.on('pong', (message) => {
+        console.log(`Received pong from server: ${message}`);
+      });
     };
 
     const connect = () => {
-      if (connecting.value || connected.value) return;
+  if (connecting.value || connected.value) return;
+  
+  connecting.value = true;
+  connectionAttempts.value++;
+  
+  try {
+    // Create socket connection if it doesn't exist
+    if (!socket.value) {
+      socket.value = io(RELAY_SERVER_URL, {
+        reconnectionAttempts: 5,
+        timeout: CONNECTION_TIMEOUT,
+        transports: ['websocket', 'polling']  // Add this line for better connection stability
+      });
       
-      connecting.value = true;
-      connectionAttempts.value++;
-      
-      try {
-        // Create socket connection if it doesn't exist
-        if (!socket.value) {
-          socket.value = io(RELAY_SERVER_URL, {
-            reconnectionAttempts: 5,
-            timeout: CONNECTION_TIMEOUT
-          });
-          
-          // Setup socket event handlers
-          setupSocketEvents();
-        } else if (!socket.value.connected) {
-          socket.value.connect();
-        }
-        
-        // Set a timeout for connection
-        connectTimeout.value = setTimeout(() => {
-          if (!connected.value) {
-            handleConnectionError(new Error('Connection timed out'));
-          }
-        }, CONNECTION_TIMEOUT);
-      } catch (error) {
-        console.error('Connection setup error:', error);
-        handleConnectionError(error);
+      // Setup socket event handlers
+      setupSocketEvents();
+    } else if (!socket.value.connected) {
+      socket.value.connect();
+    }
+    
+    // Set a timeout for connection
+    connectTimeout.value = setTimeout(() => {
+      if (!connected.value) {
+        handleConnectionError(new Error('Connection timed out'));
       }
-    };
+    }, CONNECTION_TIMEOUT);
+  } catch (error) {
+    console.error('Connection setup error:', error);
+    handleConnectionError(error);
+  }
+};
 
     const handleSetMode = (mode) => {
       if (!connected.value || !droneConnected.value) {
@@ -514,6 +519,7 @@ export default {
       handleToggleArm,
       handleStartMission,
       handleStopMission,
+      RELAY_SERVER_URL,
       clearLogs
     };
   }
