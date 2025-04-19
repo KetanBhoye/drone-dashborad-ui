@@ -156,7 +156,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch  } from 'vue';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
