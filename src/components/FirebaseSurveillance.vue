@@ -136,7 +136,7 @@ export default {
     
     // Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyBIq_iHZGz-2c3jfZvzqxh4c2PBHYY9Vm0",
+      apiKey: "",
       authDomain: "wce-surveillance.firebaseapp.com",
       databaseURL: "https://wce-surveillance-default-rtdb.firebaseio.com",
       projectId: "wce-surveillance",
