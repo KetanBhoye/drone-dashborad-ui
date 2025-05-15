@@ -28,6 +28,7 @@
           <DroneMap :latitude="telemetry.lat" :longitude="telemetry.lon" :connected="connected"
             :mission-in-progress="missionInProgress" :satellites="telemetry.satellites_visible"
             @start-mission="handleStartMission" @stop-mission="handleStopMission" />
+            <FirebaseSurveillance @detection="handleDetection" />
 
         
           <!-- <DroneWebRTC
@@ -60,6 +61,7 @@ import DroneDashboard from './components/DroneDashboard.vue'
 import LogContainer from './components/LogContainer.vue'
 import StatusPanel from './components/StatusPanel.vue'
 import ErrorDialog from './components/ErrorDialog.vue'
+import FirebaseSurveillance from './components/FirebaseSurveillance.vue' // Import the new component
 import { ref, onMounted, onUnmounted } from 'vue'
 import { io } from "socket.io-client"
 
@@ -71,6 +73,7 @@ export default {
     LogContainer,
     StatusPanel,
     ErrorDialog,
+    FirebaseSurveillance 
   },
   setup() {
     // Use the cloud relay server instead of direct connection
@@ -144,6 +147,24 @@ export default {
         connectTimeout.value = null
       }
     }
+    const handleDetection = (detection) => {
+      // Add to logs when a detection occurs
+      logs.value.unshift({
+        timestamp: Date.now(),
+        message: `${detection.message} (Confidence: ${(detection.confidence * 100).toFixed(1)}%)`,
+        type: detection.type === 'violence' ? 'error' : 
+              detection.type === 'fire' ? 'error' : 'warning'
+      });
+      
+      // Show important detections as an error dialog
+      if (detection.type === 'violence' || detection.type === 'fire') {
+        showErrorDialog(
+          detection.message,
+          `Detection at ${detection.image.Time} with ${(detection.confidence * 100).toFixed(1)}% confidence`,
+          'Please review the footage and take appropriate action'
+        );
+      }
+    };
 
     const handleConnectionError = (error) => {
       let errorMessage = 'Connection failed'
@@ -520,7 +541,8 @@ export default {
       handleStartMission,
       handleStopMission,
       RELAY_SERVER_URL,
-      clearLogs
+      clearLogs,
+      handleDetection
     };
   }
 }

@@ -12,6 +12,7 @@
     "axios": "^1.7.9",
     "browserify-zlib": "^0.2.0",
     "core-js": "^3.8.3",
+    "firebase": "^8.10.0",
     "https-browserify": "^1.0.0",
     "jsmpeg": "^1.0.0",
     "leaflet": "^1.9.4",
