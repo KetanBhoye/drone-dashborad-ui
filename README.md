@@ -1,4 +1,4 @@
-# AI-Powered Drone Surveillance Dashboard
+# AI-Powered Drone Surveillance System
 
 <div align="center">
 
@@ -922,28 +922,22 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ### 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/drone-dashboard-ui&type=Date)](https://star-history.com/#yourusername/drone-dashboard-ui&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/drone-dashboard-ui&type=Date)](https://star-history.com/#KetanBhoye/drone-dashboard-ui&Date)
 
 ### 📊 Project Statistics
 
-![Lines of Code](https://img.shields.io/tokei/lines/github/yourusername/drone-dashboard-ui)
-![GitHub repo size](https://img.shields.io/github/repo-size/yourusername/drone-dashboard-ui)
-![GitHub contributors](https://img.shields.io/github/contributors/yourusername/drone-dashboard-ui)
-![GitHub last commit](https://img.shields.io/github/last-commit/yourusername/drone-dashboard-ui)
+![Lines of Code](https://img.shields.io/tokei/lines/github/KetanBhoye/drone-dashboard-ui)
+![GitHub repo size](https://img.shields.io/github/repo-size/KetanBhoye/drone-dashboard-ui)
+![GitHub contributors](https://img.shields.io/github/contributors/KetanBhoye/drone-dashboard-ui)
+![GitHub last commit](https://img.shields.io/github/last-commit/KetanBhoye/drone-dashboard-ui)
 
 ### 🔗 Connect with Us
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/yourprofile)
-[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/yourhandle)
-[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/yourchannel)
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:your-email@domain.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/ketan-bhoye-1b9981171)
+[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:imketanbhoye100@gmail.com)
 
 ---
 
 **⭐ If this project helped you, please give it a star!**
-
-**🚀 Built with ❤️ for the open-source community**
-
-**💡 Making professional drone surveillance accessible through modern web technologies**
 
 </div>
