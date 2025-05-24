@@ -924,12 +924,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=KetanBhoye/drone-dashboard-ui&type=Date)](https://star-history.com/#KetanBhoye/drone-dashboard-ui&Date)
 
-### 📊 Project Statistics
-
-![Lines of Code](https://img.shields.io/tokei/lines/github/KetanBhoye/drone-dashboard-ui)
-![GitHub repo size](https://img.shields.io/github/repo-size/KetanBhoye/drone-dashboard-ui)
-![GitHub contributors](https://img.shields.io/github/contributors/KetanBhoye/drone-dashboard-ui)
-![GitHub last commit](https://img.shields.io/github/last-commit/KetanBhoye/drone-dashboard-ui)
 
 ### 🔗 Connect with Us
 
