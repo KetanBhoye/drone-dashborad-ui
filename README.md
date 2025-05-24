@@ -183,7 +183,7 @@ graph TB
 #### 1.1 Clone Repository
 ```bash
 # Clone the dashboard repository
-git clone https://github.com/yourusername/drone-dashboard-ui.git
+git clone https://github.com/KetanBhoye/drone-dashboard-ui.git
 cd drone-dashboard-ui
 ```
 
@@ -922,7 +922,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ### 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/drone-dashboard-ui&type=Date)](https://star-history.com/#KetanBhoye/drone-dashboard-ui&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=KetanBhoye/drone-dashboard-ui&type=Date)](https://star-history.com/#KetanBhoye/drone-dashboard-ui&Date)
 
 ### 📊 Project Statistics
 
